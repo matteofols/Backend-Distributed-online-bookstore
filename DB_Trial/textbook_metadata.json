@@ -1,0 +1,22 @@
+{
+  "mytbis_1": {
+    "Author": "ABCD",
+    "file_loc": "/Users/tejasds/Chin_college/CC/Project/CC_project_1/DB_Trial/Textbooks/mytbis_1.pdf",
+    "num_req": 5
+  },
+  "mtbis_2": {
+    "Author": "ABCD_2",
+    "file_loc": "/Users/tejasds/Chin_college/CC/Project/CC_project_1/DB_Trial/Textbooks/mytbis_2.pdf",
+    "num_req": 52
+  },
+  "mtbis_3": {
+    "Author": "ABCD_3",
+    "file_loc": "/Users/tejasds/Chin_college/CC/Project/CC_project_1/DB_Trial/Textbooks/mytbis_3.pdf",
+    "num_req": 23
+  },
+  "mtbis_4": {
+    "Author": "ABCD_4",
+    "file_loc": "/Users/tejasds/Chin_college/CC/Project/CC_project_1/DB_Trial/Textbooks/mytbis_4.pdf",
+    "num_req": 78
+  }
+}
