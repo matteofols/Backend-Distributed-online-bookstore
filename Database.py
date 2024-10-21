@@ -41,36 +41,53 @@ class Database:
                         #     content = file.read()  # Read the file content
                         # return {"book_name": book_name, "path": book_path, "content": content}
                         self.books_database[book_name]["num_req"] = self.books_database[book_name]["num_req"] + 1
-                        return {"book_name": book_name, "path": book_path}
+                        # return {"book_name": book_name, "path": book_path}
                     except Exception as e:
                         return {"Error": f'Failed to read file at {book_path}: {str(e)}'}
                 else:
                     return {"Error": f'File at path {book_path} not found at {timestamp}.'}
             else:
                 return {"Error": f'Book {book_name} not found at {timestamp}.'}
+        return {"book_name": book_name, "path": book_path}
 
-    def put_book(self, book_id, path):  # Adds a new book
+    def post_book(self, book_id, data, author):  # Adds a new book
         # with self.lock:
         timestamp = self._get_timestamp()
+        path = "/Users/tejasds/Chin_college/CC/Project/CC_project_1/DB_Trial/Textbooks/" + book_id + ".pdf"
+        temp_dict = {}
         self.operations_log.append(f'put_book({book_id}, {path}) - {timestamp}')
         with self.lock:
-            self.books_database[book_id] = path
+            temp_dict["file_loc"] = path
+            temp_dict["num_req"] = 0
+            temp_dict["Author"] = author
+            self.books_database[book_id] = temp_dict
+            try:
+                with open(path, 'wb') as f:
+                    f.write(data)
+            except Exception as e:
+                return {"Error": f'Failed to store file at {path}: {str(e)}'}
             # write the book to the hard disk
-            return {"Message": f'Book {book_id} was successfully added with path {path}'}
-        self.save_metadata('textbook_metadata.json', self.books_database)
+            # return {"Message": f'Book {book_id} was successfully added with path {path}'}
+        self.save_metadata('/Users/tejasds/Chin_college/CC/Project/CC_project_1/DB_Trial/textbook_metadata.json', self.books_database)
+        return {"Message": f'Book {book_id} was successfully added with path {path}'}
 
-    def post_book(self, book_id, path): # Updates the path to the book
+    def put_book(self, book_id, path, data): # Updates the path to the book
         # with self.lock:
         timestamp = self._get_timestamp()
         self.operations_log.append(f'post_book({book_id}, {path}) - {timestamp}')
         with self.lock:
             if book_id in self.books_database:
-                self.books_database[book_id] = path
+                try:
+                    with open(path, 'wb') as f:
+                        f.write(data)
+                except Exception as e:
+                    return {"Error": f'Failed to update file at {path}: {str(e)}'}
                 # update the contents of the book as well.
-                return {"Message": f'Book {book_id} was successfully updated with path {path}'}
+                # return {"Message": f'Book {book_id} was successfully updated with path {path}'}
             else:
                 return {"Error": f'Book {book_id}, not found.'}
-        self.save_metadata('textbook_metadata.json', self.books_database)
+        self.save_metadata('/Users/tejasds/Chin_college/CC/Project/CC_project_1/DB_Trial/textbook_metadata.json', self.books_database)
+        return {"Message": f'Book {book_id} was successfully updated with path {path}'}
 
     def delete_book(self, book_name): # Deletes the book from the database
         # with self.lock:
@@ -78,12 +95,17 @@ class Database:
         self.operations_log.append(f'delete_book({book_name}) - {timestamp}')
         with self.lock:
             if book_name in self.books_database:
-                del self.books_database[book_name]
+                try:
+                    os.remove(self.books_database[book_name]["file_loc"])
+                    del self.books_database[book_name]
+                except Exception as e:
+                    return {"Error": f'Book {book_name} could not be deleted.'}
                 # delete the book in the hard disk as well.
-                return {"Message": f'Book {book_name} was successfully deleted'}
+                # return {"Message": f'Book {book_name} was successfully deleted'}
             else:
                 return {"Error": f'Book {book_name}, not found.'}
-        self.save_metadata('textbook_metadata.json', self.books_database)
+        self.save_metadata('/Users/tejasds/Chin_college/CC/Project/CC_project_1/DB_Trial/textbook_metadata.json', self.books_database)
+        return {"Message": f'Book {book_name} was successfully deleted'}
 
     def get_user(self, username):
         # with self.lock:
