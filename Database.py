@@ -27,13 +27,22 @@ class Database:
     def _get_timestamp(self):
         return datetime.now().strftime("%m-%d-%Y %H:%M:%S")
 
+    @lru_cache(maxsize=3)  # Cache the 3 most frequently accessed books
+    def _cached_get_book(self, book_name):
+        print(f"Fetching '{book_name}' from the database (not cache).") # For testing if the caching works
+        return self.books_db.find_one({"book_name": book_name})
+
     def get_book(self, book_name): # Checks if a path exists and uses the path tp find the file and reads, it and returnes the information
         # with self.lock:
         timestamp = self._get_timestamp()
         self.operations_log.append(f'get_book({book_name}) - {timestamp}')
         with self.lock:
-            book = self.books_db.find_one({"book_name": book_name})
+            book = self._cached_get_book(book_name)
             if book:
+                # Increment the request count
+                self.books_db.update_one(
+                    {"book_name": book_name}, {"$inc": {"num_req": 1}}
+                )
                 return book
             else:
                 return {"Error": f'Book {book_name} not found at {timestamp}.'}
@@ -49,6 +58,7 @@ class Database:
                 "author": author,
             }
             self.books_db.insert_one(book)
+            self._cached_get_book.cache_clear()
             return {"Message": f'Book {book_id} was successfully added.'}
 
 
@@ -58,6 +68,7 @@ class Database:
         with self.lock:
             result = self.books_db.update_one({"book_id": book_id}, {"$set": data})
             if result.matched_count > 0:
+                self._cached_get_book.cache_clear()
                 return {"Message": f'Book {book_id} was successfully updated.'}
             else:
                 return {"Error": f'Book {book_id} not found.'}
@@ -68,6 +79,7 @@ class Database:
         with self.lock:
             result = self.books_db.delete_one({"book_name": book_name})
             if result.deleted_count > 0:
+                self._cached_get_book.cache_clear()
                 return {"Message": f'Book {book_name} was successfully deleted.'}
             else:
                 return {"Error": f'Book {book_name} not found.'}

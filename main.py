@@ -16,9 +16,9 @@ db = Database()
 @app.route('/tb/<file_name>', methods=['GET'])
 def get_pdf(file_name):
     book_info = db.get_book(file_name[:-4])
-    if "path" in book_info:
+    if "file_loc" in book_info:
         # return send_file(book_info["path"], mimetype='application/pdf', attachment_filename='book.pdf')
-        return send_file(book_info["path"], mimetype='application/pdf')
+        return send_file(book_info["file_loc"], mimetype='application/pdf')
     return jsonify(book_info), 404
 
 @app.route('/tb/<file_name>', methods=['PUT'])
