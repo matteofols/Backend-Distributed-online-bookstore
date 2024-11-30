@@ -13,6 +13,8 @@ BASE_URL = 'http://localhost:8000'
 # Configure the number of threads and operations
 # NUM_THREADS = 4
 # OPS_PER_THREAD = 5000
+
+# change the threads and ops here
 NUM_THREADS = 10
 OPS_PER_THREAD = 30
 PRINT_INTERVAL = 10000  # Interval for printing intermediate results
@@ -95,6 +97,7 @@ def monitor_performance():
         last_print = time.time()
 
 # Populate the operation queue with mixed 'set' and 'get' requests
+# change the number of requests sent to the server here,
 for j in range(3):
     for i in range(100):
         # key = f"key_{i}"
