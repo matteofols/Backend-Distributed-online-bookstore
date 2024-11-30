@@ -9,6 +9,7 @@ import hashlib
 
 # The base URL of the Flask server
 BASE_URL = 'http://localhost:8000'
+# file_path please change it to any of the pdf files in your local system
 file_path = "/Users/tejasds/Downloads/Cloud_Computing_Homework_3.pdf"
 
 # Client operation function
