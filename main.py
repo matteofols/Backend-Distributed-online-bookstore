@@ -1,6 +1,10 @@
 import os
 from flask import Flask, request, redirect, url_for, render_template, send_from_directory, send_file, jsonify
 import tools
+from flask import Response
+
+from io import BytesIO, StringIO
+
 # import jsonify
 from Database import Database
 
@@ -15,10 +19,10 @@ db = Database()
 
 @app.route('/tb/<file_name>', methods=['GET'])
 def get_pdf(file_name):
-    book_info = db.get_book(file_name[:-4])
-    if "file_loc" in book_info:
-        # return send_file(book_info["path"], mimetype='application/pdf', attachment_filename='book.pdf')
-        return send_file(book_info["file_loc"], mimetype='application/pdf')
+    book_info = db.get_book(file_name)
+    # print(book_info)
+    if "book_content" in book_info:
+        return Response(book_info["book_content"], mimetype='application/pdf')
     return jsonify(book_info), 404
 
 @app.route('/tb/<file_name>', methods=['PUT'])
@@ -28,9 +32,10 @@ def put_pdf(file_name):
 
     pdf_file = request.data
     # pdf_data = pdf_file.read()
-    print(db.books_database[file_name[:-4]])
-    book_path = db.books_database[file_name[:-4]]["file_loc"]
-    book_info = db.put_book(file_name[:-4], book_path, pdf_file)
+    # print(db.books_database[file_name[:-4]])
+    # book_path = db.books_database[file_name[:-4]]["file_loc"]
+    # book_info = db.put_book(file_name[:-4], book_path, pdf_file)
+    book_info = db.put_book(file_name[:-4], pdf_file)
     if "Message" in book_info:
         # return send_file(book_info["path"], mimetype='application/pdf', attachment_filename='book.pdf')
         return jsonify(book_info), 200
@@ -45,7 +50,7 @@ def post_pdf(file_name, author):
     # pdf_data = pdf_file.read()
     # print(db.books_database[file_name[:-4]])
     # book_path = db.books_database[file_name[:-4]]["file_loc"]
-    book_info = db.post_book(file_name[:-4], pdf_file, author)
+    book_info = db.post_book(file_name, pdf_file, author)
     if "Message" in book_info:
         # return send_file(book_info["path"], mimetype='application/pdf', attachment_filename='book.pdf')
         return jsonify(book_info), 200

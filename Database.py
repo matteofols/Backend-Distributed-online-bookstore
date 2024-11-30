@@ -1,36 +1,42 @@
+# havent included the write concern to replicate writes. Make sure to add that if this doesnt work
+
 from threading import Lock
 from datetime import datetime
 from pymongo import MongoClient
+from functools import lru_cache
+from bson.binary import Binary
+from pymongo.errors import ConnectionFailure, WriteError, OperationFailure
+import logging
+from pymongo import WriteConcern
 
 class Database:
     def __init__(self):
-        self.client = MongoClient("mongodb://localhost:5000/")
-        self.db = self.client['online_bookstore']
-        self.books_db = self.db['books'] # This will store the books and their path
-        self.users_db = self.db['users'] 
-        self.operations_log = []  # This keeps track of all the operations with time logs
-        self.lock = Lock()
-# These two functions are no longer needed
-    # def get_metadata(self, file_name):
-    #     self.metadata_file = os.path.join(self.upload_folder, file_name)
-    #     if os.path.exists(self.metadata_file):
-    #         with open(self.metadata_file, 'r') as f:
-    #             self.database = json.load(f)
-    #     else:
-    #         self.database = {}
-    #     return self.database
-
-    # def save_metadata(self, metadata_file, metadata):
-    #     with open(metadata_file, 'w') as f:
-    #         json.dump(metadata, f)
+        try:
+            # uncomment second line after setting up mongo replicas.
+            self.client = MongoClient("mongodb://localhost:27017/")
+            # self.client = MongoClient("mongodb://localhost:27017,localhost:27017,localhost:27017/?replicationSet=myReplicaSet")
+            self.db = self.client['online_bookstore']
+            self.books_db = self.db['books'] # This will store the books and their path
+            self.users_db = self.db['users']
+            self.operations_log = []  # This keeps track of all the operations with time logs
+            self.lock = Lock()
+        except ConnectionFailure as e:
+            print(f'Could not connect to MongoDB: {e}')
+            raise
 
     def _get_timestamp(self):
         return datetime.now().strftime("%m-%d-%Y %H:%M:%S")
 
-    @lru_cache(maxsize=3)  # Cache the 3 most frequently accessed books
+    @lru_cache(maxsize=10)  # Cache the 3 most frequently accessed books
     def _cached_get_book(self, book_name):
         print(f"Fetching '{book_name}' from the database (not cache).") # For testing if the caching works
-        return self.books_db.find_one({"book_name": book_name})
+        fetched_book = self.books_db.find_one({"book_id": book_name})
+        # print(fetched_book)
+        if fetched_book != None:
+            # return fetched_book["book_content"]
+            return fetched_book
+        else:
+            return None
 
     def get_book(self, book_name): # Checks if a path exists and uses the path tp find the file and reads, it and returnes the information
         # with self.lock:
@@ -38,35 +44,38 @@ class Database:
         self.operations_log.append(f'get_book({book_name}) - {timestamp}')
         with self.lock:
             book = self._cached_get_book(book_name)
-            if book:
+            if book != None:
                 # Increment the request count
                 self.books_db.update_one(
-                    {"book_name": book_name}, {"$inc": {"num_req": 1}}
+                    {"book_id": book_name}, {"$inc": {"num_req": 1}}
                 )
                 return book
             else:
                 return {"Error": f'Book {book_name} not found at {timestamp}.'}
-            
-    def post_book(self, book_id, author):  # Adds a new book
+
+    def post_book(self, book_id, data, author):  # Adds a new book
         timestamp = self._get_timestamp()
         self.operations_log.append(f'post_book({book_id}) - {timestamp}')
         with self.lock:
-            book = {
-                "book_id": book_id,
-                "file_loc": f"/path/to/{book_id}.pdf",
-                "num_req": 0,
-                "author": author,
-            }
-            self.books_db.insert_one(book)
-            self._cached_get_book.cache_clear()
-            return {"Message": f'Book {book_id} was successfully added.'}
-
+            try:
+                book = {
+                    "book_id": book_id,
+                    "book_content": Binary(data),
+                    "num_req": 0,
+                    "author": author,
+                }
+                self.books_db.insert_one(book)
+                self._cached_get_book.cache_clear()
+                return {"Message": f'Book {book_id} was successfully added.'}
+            except:
+                return {"Error": f'Book {book_id} could not be saved at {timestamp}.'}
 
     def put_book(self, book_id, data): # Updates the path to the book
         timestamp = self._get_timestamp()
         self.operations_log.append(f'put_book({book_id}) - {timestamp}')
         with self.lock:
-            result = self.books_db.update_one({"book_id": book_id}, {"$set": data})
+            # result = self.books_db.update_one({"book_id": book_id}, {"$set": data}) //
+            result = self.books_db.update_one({"book_id": book_id},  {"$set": {"binary_field": Binary(data)}})
             if result.matched_count > 0:
                 self._cached_get_book.cache_clear()
                 return {"Message": f'Book {book_id} was successfully updated.'}
